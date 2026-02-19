@@ -1,0 +1,1237 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+
+/* ════════════════════════════════════════════════════════════
+   🎮 NUTRI-QUEST — Interactive Nutrition Learning Hub
+   Research-backed child UX/UI for ages 10-11 (CM2)
+   Design: Neon Arcade / Street-level energy
+   ════════════════════════════════════════════════════════════ */
+
+// ── Inject fonts & global styles ──────────────────────────
+const GLOBAL_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800;900&display=swap');
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0a0015; }
+  .nq-root { font-family: 'Nunito', sans-serif; }
+  .fredoka { font-family: 'Fredoka One', cursive; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+  @keyframes wiggle { 0%,100%{transform:rotate(-5deg)} 50%{transform:rotate(5deg)} }
+  @keyframes slideIn { from{transform:translateY(40px);opacity:0} to{transform:translateY(0);opacity:1} }
+  @keyframes popIn { 0%{transform:scale(0.5);opacity:0} 80%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+  @keyframes starBg { 0%{background-position:0 0} 100%{background-position:100px 100px} }
+  @keyframes flash { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  @keyframes confettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(500px) rotate(720deg);opacity:0} }
+  @keyframes glow { 0%,100%{box-shadow:0 0 20px #FFE600,0 0 40px #FFE60066} 50%{box-shadow:0 0 30px #FFE600,0 0 60px #FFE60099} }
+  @keyframes enemyShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-3px)} 75%{transform:translateX(3px)} }
+  @keyframes boomPop { 0%{transform:scale(0);opacity:1} 100%{transform:scale(2.5);opacity:0} }
+  .float { animation: float 3s ease-in-out infinite; }
+  .pulse { animation: pulse 1.5s ease-in-out infinite; }
+  .wiggle { animation: wiggle 0.5s ease-in-out infinite; }
+  .slide-in { animation: slideIn 0.4s ease-out forwards; }
+  .pop-in { animation: popIn 0.3s ease-out forwards; }
+  .flash { animation: flash 0.8s ease-in-out infinite; }
+  .glow { animation: glow 2s ease-in-out infinite; }
+  button { cursor: pointer; }
+  canvas { display: block; }
+`;
+
+function StyleInject() {
+  return <style dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />;
+}
+
+// ── Theme colors ──────────────────────────────────────────
+const C = {
+  bg: '#0a0015',
+  panel: '#12002a',
+  yellow: '#FFE600',
+  coral: '#FF4D6D',
+  cyan: '#4CC9F0',
+  green: '#06D6A0',
+  orange: '#FF9A00',
+  purple: '#B100E8',
+  pink: '#FF6FD8',
+  white: '#FFFFFF',
+  dim: 'rgba(255,255,255,0.15)',
+};
+
+// ── Unit definitions (Tower Defense) ─────────────────────
+const TD_UNITS = {
+  broccoli: { emoji: '🥦', name: 'Broc Archer', cost: 50, damage: 12, atkMs: 1200, range: 2.5, type: 'archer', color: C.green, desc: 'Tire de loin, rapide !' },
+  apple:    { emoji: '🍎', name: 'Pomme Mur',   cost: 75, hp: 400, type: 'barrier', color: C.coral, desc: 'Bloque les ennemis !' },
+  egg:      { emoji: '🥚', name: 'Œuf Guerrier', cost: 100, damage: 30, atkMs: 900, range: 1.3, type: 'combatant', color: C.yellow, desc: 'Fort au corps-à-corps !' },
+  carrot:   { emoji: '🥕', name: 'Carotte Boost', cost: 60, boostFactor: 1.5, type: 'support', color: C.orange, desc: 'Booste tes alliés !' },
+  lentils:  { emoji: '🫘', name: 'Lentilles⏳', cost: 25, delayMs: 18000, damage: 55, atkMs: 600, range: 3, type: 'delayed', color: C.purple, desc: 'LENT à démarrer... mais DÉVASTATEUR après !' },
+};
+
+// ── Enemy definitions ─────────────────────────────────────
+const TD_ENEMIES = [
+  { emoji: '🥤', name: 'Soda Can',   hp: 60,  maxHp: 60,  speed: 1.0, reward: 10 },
+  { emoji: '🍟', name: 'Frites',     hp: 90,  maxHp: 90,  speed: 0.8, reward: 15 },
+  { emoji: '🍬', name: 'Bonbon',     hp: 35,  maxHp: 35,  speed: 1.6, reward: 8  },
+  { emoji: '🍔', name: 'Boss Burger',hp: 350, maxHp: 350, speed: 0.4, reward: 50 },
+  { emoji: '🍩', name: 'Donut',      hp: 80,  maxHp: 80,  speed: 1.1, reward: 12 },
+];
+
+// ── Wave definitions ──────────────────────────────────────
+const WAVES = [
+  [0,0,0,2,0,1,0,2],
+  [0,1,2,0,1,0,2,1,2,4],
+  [0,1,2,3,0,1,2,3,4,0,1,2,3],
+];
+
+// ── Quiz data ─────────────────────────────────────────────
+const QUIZZES = {
+  sodaSurfer: [
+    { q: "Qui était ton ennemi dans ce jeu ?", opts: ['🥦 Le Brocoli', '🥩 Le Steak', '🥤 Sodas & Chips'], correct: 2, xp: "Les sodas et chips sont bourrés de sucres cachés et de graisses saturées — ton énergie s'effondre après !" },
+    { q: "Qu'est-ce qui t'aidait le mieux à avancer ?", opts: ['🍬 Les sucres rapides', '🍎 Les fruits', '🍟 Les frites'], correct: 1, xp: "Les fruits donnent une énergie stable. Pas de pic, pas de crash ! ✅" },
+    { q: "Quelle stratégie donnait le meilleur score ?", opts: ['Foncer tout droit', 'Collecter un seul aliment', '⚖️ Stratégie équilibrée'], correct: 2, xp: "Comme une vraie alimentation : varier = durer ! L'équilibre gagne toujours sur la durée. 🏆" },
+  ],
+  tdGame: [
+    { q: "Qui était l'ennemi dans ce jeu ?", opts: ['🥦 Brocoli', '🥩 Steak', '🥤 Chips & Sodas'], correct: 2, xp: "Les junk foods envahissaient ton assiette ! Sources de sucres rapides et de graisses cachées." },
+    { q: "Quel défenseur était le meilleur SUR LE LONG TERME ?", opts: ['🍬 Les sucres rapides', '🍎 Pomme Bouclier', '🫘 Lentilles (lentes mais puissantes)'], correct: 2, xp: "Les lentilles = protéines + fibres + longue digestion. Lentes à démarrer mais ULTRA puissantes — comme leur énergie dans ton corps !" },
+    { q: "Quelle était la meilleure stratégie pour gagner ?", opts: ['Avoir le plus d\'unités possible', '⚖️ Stratégie équilibrée et diversifiée', 'Utiliser un seul type d\'aliment'], correct: 1, xp: "Diversifier tes défenseurs = assiette équilibrée = victoire ! Un seul aliment ne peut pas tout faire seul. 🌟" },
+  ],
+};
+
+// ── Confetti particle ─────────────────────────────────────
+function Confetti() {
+  const colors = ['#FFE600','#FF4D6D','#4CC9F0','#06D6A0','#B100E8','#FF9A00'];
+  return (
+    <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:9999 }}>
+      {Array.from({length:50}).map((_,i) => (
+        <div key={i} style={{
+          position:'absolute',
+          left: `${Math.random()*100}%`,
+          top: '-20px',
+          width: `${6+Math.random()*8}px`,
+          height: `${6+Math.random()*8}px`,
+          background: colors[Math.floor(Math.random()*colors.length)],
+          borderRadius: Math.random() > 0.5 ? '50%' : '0',
+          animation: `confettiFall ${1.5+Math.random()*2}s ${Math.random()*1.5}s ease-in forwards`,
+        }} />
+      ))}
+    </div>
+  );
+}
+
+// ── Button ────────────────────────────────────────────────
+function BigBtn({ children, onClick, color = C.yellow, textColor = '#000', style = {}, disabled = false }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
+      style={{
+        background: disabled ? '#333' : color,
+        color: disabled ? '#666' : textColor,
+        border: 'none',
+        borderRadius: '16px',
+        padding: '14px 28px',
+        fontSize: '18px',
+        fontFamily: "'Fredoka One', cursive",
+        fontWeight: 900,
+        letterSpacing: '0.5px',
+        transform: pressed ? 'scale(0.95) translateY(3px)' : 'scale(1) translateY(0)',
+        boxShadow: pressed ? 'none' : `0 6px 0 ${color}88, 0 8px 20px ${color}44`,
+        transition: 'transform 0.08s, box-shadow 0.08s',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── Score Badge ───────────────────────────────────────────
+function ScoreBadge({ score, label }) {
+  return (
+    <div style={{ textAlign:'center', background: C.panel, borderRadius:'16px', padding:'12px 20px', border:`2px solid ${C.yellow}44` }}>
+      <div className="fredoka" style={{ fontSize:'32px', color: C.yellow }}>{score}</div>
+      <div style={{ fontSize:'12px', color: 'rgba(255,255,255,0.6)', fontWeight:700 }}>{label}</div>
+    </div>
+  );
+}
+
+// ── Star field background ─────────────────────────────────
+function Stars() {
+  const stars = Array.from({length:80}).map((_,i) => ({
+    left: `${Math.random()*100}%`,
+    top: `${Math.random()*100}%`,
+    size: 1+Math.random()*3,
+    delay: Math.random()*3,
+  }));
+  return (
+    <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0 }}>
+      {stars.map((s,i) => (
+        <div key={i} style={{
+          position:'absolute',
+          left:s.left, top:s.top,
+          width:s.size, height:s.size,
+          borderRadius:'50%',
+          background:'white',
+          opacity: 0.3+Math.random()*0.5,
+          animation:`flash ${1+Math.random()*3}s ${s.delay}s ease-in-out infinite`,
+        }}/>
+      ))}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════
+   SCREEN 1: LANDING
+   ════════════════════════════════════════════════════ */
+function LandingScreen({ onStart, scores }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px', position:'relative', zIndex:1 }}>
+      {/* Info button */}
+      <div style={{ position:'absolute', top:20, right:20 }}>
+        <BigBtn onClick={onStart.info} color="rgba(255,255,255,0.1)" textColor="white" style={{ fontSize:'13px', padding:'8px 16px', border:'1px solid rgba(255,255,255,0.2)' }}>
+          📋 Info Enseignants
+        </BigBtn>
+      </div>
+
+      {/* Title */}
+      <div className="float" style={{ textAlign:'center', marginBottom:'32px' }}>
+        <div style={{ fontSize:'clamp(28px,8vw,72px)', lineHeight:1, marginBottom:'8px' }}>
+          <span className="fredoka" style={{ color: C.yellow, textShadow:`0 0 30px ${C.yellow}88, 0 4px 0 #a09200` }}>
+            🥗 NUTRI
+          </span>
+          <span className="fredoka" style={{ color: C.coral, textShadow:`0 0 30px ${C.coral}88, 0 4px 0 #a03040` }}>
+            QUEST
+          </span>
+        </div>
+        <div style={{ fontSize:'clamp(14px,3vw,20px)', color:'rgba(255,255,255,0.7)', fontWeight:700 }}>
+          Mange bien. Joue fort. Gagne ! 🏆
+        </div>
+      </div>
+
+      {/* Character parade */}
+      <div style={{ display:'flex', gap:'24px', marginBottom:'40px', flexWrap:'wrap', justifyContent:'center' }}>
+        {['🥦','🍎','🫘','🥕','🥚','💧'].map((e,i) => (
+          <div key={i} className="float" style={{ fontSize:'48px', animationDelay:`${i*0.3}s`, filter:`drop-shadow(0 0 10px white)` }}>{e}</div>
+        ))}
+      </div>
+
+      {/* High scores */}
+      {(scores.sodaSurfer > 0 || scores.tdGame > 0) && (
+        <div style={{ display:'flex', gap:'16px', marginBottom:'32px', flexWrap:'wrap', justifyContent:'center' }}>
+          {scores.sodaSurfer > 0 && <ScoreBadge score={scores.sodaSurfer} label="🏄 Soda Surfer" />}
+          {scores.tdGame > 0 && <ScoreBadge score={scores.tdGame} label="🏰 Assiette Royale" />}
+        </div>
+      )}
+
+      {/* Game cards */}
+      <div style={{ display:'flex', gap:'20px', marginBottom:'40px', flexWrap:'wrap', justifyContent:'center' }}>
+        <GameCard
+          emoji="🏄"
+          title="Soda Surfer"
+          desc="Évite les canettes et ramasse les fruits ! Utilise ↑↓ ou les boutons."
+          color={C.cyan}
+          onClick={() => onStart.sodaSurfer()}
+          badge="RUNNER"
+        />
+        <GameCard
+          emoji="🏰"
+          title="Assiette Royale"
+          desc="Défends ton assiette contre les junk foods ! Place tes défenseurs strategiquement."
+          color={C.orange}
+          onClick={() => onStart.tdGame()}
+          badge="TOWER DEFENSE"
+        />
+      </div>
+
+      <div style={{ color:'rgba(255,255,255,0.35)', fontSize:'13px', textAlign:'center', maxWidth:'400px' }}>
+        Des mini-jeux créés pour les élèves de CM2 🎓<br/>
+        Joue, gagne des points, réponds au quiz — et découvre les secrets d'une alimentation au top !
+      </div>
+    </div>
+  );
+}
+
+function GameCard({ emoji, title, desc, color, onClick, badge }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: hover ? `${color}22` : C.panel,
+        border: `3px solid ${hover ? color : color+'44'}`,
+        borderRadius:'20px',
+        padding:'24px',
+        width:'220px',
+        cursor:'pointer',
+        transform: hover ? 'translateY(-6px) scale(1.02)' : 'translateY(0)',
+        transition:'all 0.2s ease',
+        boxShadow: hover ? `0 16px 40px ${color}44` : 'none',
+        textAlign:'center',
+      }}
+    >
+      <div style={{ fontSize:'56px', marginBottom:'8px' }}>{emoji}</div>
+      <div style={{ display:'inline-block', background:color, color:'#000', borderRadius:'20px', padding:'3px 10px', fontSize:'10px', fontWeight:900, marginBottom:'10px', letterSpacing:'1px' }}>{badge}</div>
+      <div className="fredoka" style={{ fontSize:'22px', color:'white', marginBottom:'8px' }}>{title}</div>
+      <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.6)', lineHeight:1.5 }}>{desc}</div>
+      <div style={{ marginTop:'16px' }}>
+        <BigBtn color={color} textColor="#000" style={{ padding:'10px 20px', fontSize:'15px' }}>JOUER ▶</BigBtn>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════
+   SCREEN 2: SODA SURFER (Canvas Runner)
+   ════════════════════════════════════════════════════ */
+function SodaSurferGame({ onGameOver, onBack }) {
+  const canvasRef = useRef(null);
+  const gameRef = useRef({
+    running: false,
+    started: false,
+    score: 0,
+    lives: 3,
+    speed: 4,
+    playerLane: 1,
+    obstacles: [],
+    collectibles: [],
+    frame: 0,
+    animFrame: null,
+    lastHit: -60,
+    particles: [],
+  });
+  const stateRef = useRef({ running: false, score: 0, lives: 3 });
+  const [lives, setLives] = useState(3);
+  const [score, setScore] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [started, setStarted] = useState(false);
+
+  const W = 660, H = 400;
+  const LANE_Y = [H/4, H/2, (3*H)/4];
+  const PLAYER_X = 90;
+  const OBSTACLE_TYPES = ['🥤','🍟','🍬','🍔','🍩'];
+  const COLLECT_TYPES = ['🍎','🥦','💧','🥕','🍇'];
+
+  const startGame = useCallback(() => {
+    const g = gameRef.current;
+    g.running = true;
+    g.score = 0;
+    g.lives = 3;
+    g.speed = 4;
+    g.playerLane = 1;
+    g.obstacles = [];
+    g.collectibles = [];
+    g.frame = 0;
+    g.particles = [];
+    setLives(3);
+    setScore(0);
+    setGameOver(false);
+    setStarted(true);
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    function spawnObstacle() {
+      const g = gameRef.current;
+      const lane = Math.floor(Math.random() * 3);
+      // avoid spawning in player lane if very close
+      g.obstacles.push({
+        lane,
+        x: W + 60,
+        emoji: OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)],
+        speed: g.speed + Math.random() * 1.5,
+      });
+    }
+
+    function spawnCollectible() {
+      const g = gameRef.current;
+      const lane = Math.floor(Math.random() * 3);
+      g.collectibles.push({
+        lane,
+        x: W + 60,
+        emoji: COLLECT_TYPES[Math.floor(Math.random() * COLLECT_TYPES.length)],
+        speed: g.speed,
+      });
+    }
+
+    function addParticle(x, y, text, color = '#FFE600') {
+      const g = gameRef.current;
+      g.particles.push({ x, y, text, color, life: 60, vy: -2 });
+    }
+
+    function loop() {
+      const g = gameRef.current;
+      if (!g.running) return;
+
+      g.frame++;
+      g.score++;
+
+      // Speed up
+      if (g.frame % 400 === 0) {
+        g.speed = Math.min(g.speed + 0.5, 12);
+      }
+
+      // Spawn
+      const spawnRate = Math.max(25, 55 - Math.floor(g.frame / 200));
+      if (g.frame % spawnRate === 0) spawnObstacle();
+      if (g.frame % 80 === 0) spawnCollectible();
+
+      // ── DRAW ──────────────────────────────────────────
+      // Background
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+      bgGrad.addColorStop(0, '#0a0015');
+      bgGrad.addColorStop(1, '#0d1a2e');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Road lanes
+      LANE_Y.forEach((y, i) => {
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.05)';
+        ctx.fillRect(0, y - 35, W, 70);
+        // Lane divider dashes
+        if (i < 2) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([20, 20]);
+          ctx.beginPath();
+          ctx.moveTo(0, y + 35);
+          ctx.lineTo(W, y + 35);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      });
+
+      // Player (with invincibility flash)
+      const isFlashing = g.frame - g.lastHit < 60 && Math.floor((g.frame - g.lastHit) / 6) % 2 === 0;
+      if (!isFlashing) {
+        ctx.font = '44px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🏃', PLAYER_X, LANE_Y[g.playerLane]);
+        // Glow around player
+        ctx.shadowColor = '#4CC9F0';
+        ctx.shadowBlur = 15;
+        ctx.fillText('🏃', PLAYER_X, LANE_Y[g.playerLane]);
+        ctx.shadowBlur = 0;
+      }
+
+      // Obstacles
+      ctx.font = '40px serif';
+      g.obstacles = g.obstacles.filter(o => {
+        o.x -= o.speed;
+        const dist = Math.abs(o.x - PLAYER_X);
+        const inLane = o.lane === g.playerLane;
+        if (inLane && dist < 35 && g.frame - g.lastHit > 60) {
+          g.lives--;
+          g.lastHit = g.frame;
+          addParticle(PLAYER_X, LANE_Y[g.playerLane] - 40, '💥 -1', '#FF4D6D');
+          setLives(g.lives);
+          if (g.lives <= 0) {
+            g.running = false;
+            setTimeout(() => {
+              setGameOver(true);
+              onGameOver(Math.floor(g.score / 10));
+            }, 300);
+          }
+          return false;
+        }
+        if (o.x > -50) {
+          ctx.shadowColor = '#FF4D6D';
+          ctx.shadowBlur = 8;
+          ctx.fillText(o.emoji, o.x, LANE_Y[o.lane]);
+          ctx.shadowBlur = 0;
+          return true;
+        }
+        return false;
+      });
+
+      // Collectibles
+      g.collectibles = g.collectibles.filter(c => {
+        c.x -= c.speed;
+        const dist = Math.abs(c.x - PLAYER_X);
+        if (c.lane === g.playerLane && dist < 35) {
+          g.score += 150;
+          addParticle(PLAYER_X, LANE_Y[g.playerLane] - 40, '+150 ⭐', '#FFE600');
+          return false;
+        }
+        if (c.x > -50) {
+          ctx.shadowColor = '#06D6A0';
+          ctx.shadowBlur = 10;
+          ctx.fillText(c.emoji, c.x, LANE_Y[c.lane]);
+          ctx.shadowBlur = 0;
+          return true;
+        }
+        return false;
+      });
+
+      // Particles
+      g.particles = g.particles.filter(p => {
+        p.y += p.vy;
+        p.life--;
+        ctx.globalAlpha = p.life / 60;
+        ctx.fillStyle = p.color;
+        ctx.font = 'bold 18px Nunito, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(p.text, p.x, p.y);
+        ctx.globalAlpha = 1;
+        return p.life > 0;
+      });
+
+      // HUD
+      ctx.fillStyle = '#FFE600';
+      ctx.font = 'bold 22px Fredoka One, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`Score: ${Math.floor(g.score / 10)}`, 16, 12);
+      ctx.fillText('❤️'.repeat(Math.max(0, g.lives)), 16, 40);
+
+      // Speed meter
+      const speedPct = Math.min(1, (g.speed - 4) / 8);
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      ctx.fillRect(W - 110, 12, 95, 14);
+      ctx.fillStyle = `hsl(${120 - speedPct * 120}, 100%, 50%)`;
+      ctx.fillRect(W - 110, 12, 95 * speedPct, 14);
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = '11px Nunito, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('VITESSE', W - 10, 12);
+
+      setScore(Math.floor(g.score / 10));
+      g.animFrame = requestAnimationFrame(loop);
+    }
+
+    if (started && !gameOver) {
+      loop();
+    }
+
+    return () => {
+      const g = gameRef.current;
+      g.running = false;
+      if (g.animFrame) cancelAnimationFrame(g.animFrame);
+    };
+  }, [started, gameOver]);
+
+  // Keyboard
+  useEffect(() => {
+    const handler = (e) => {
+      const g = gameRef.current;
+      if (!g.running) return;
+      if (e.key === 'ArrowUp' && g.playerLane > 0) { g.playerLane--; e.preventDefault(); }
+      if (e.key === 'ArrowDown' && g.playerLane < 2) { g.playerLane++; e.preventDefault(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const moveUp = () => { const g = gameRef.current; if (g.running && g.playerLane > 0) g.playerLane--; };
+  const moveDown = () => { const g = gameRef.current; if (g.running && g.playerLane < 2) g.playerLane++; };
+
+  return (
+    <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'20px', position:'relative', zIndex:1 }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', gap:'16px', marginBottom:'16px', width:'100%', maxWidth:'660px' }}>
+        <BigBtn onClick={onBack} color="rgba(255,255,255,0.1)" textColor="white" style={{ fontSize:'14px', padding:'8px 14px' }}>← Retour</BigBtn>
+        <div className="fredoka" style={{ fontSize:'28px', color: C.cyan, flex:1, textAlign:'center' }}>🏄 Soda Surfer</div>
+        <ScoreBadge score={score} label="points" />
+      </div>
+
+      {/* Canvas */}
+      <div style={{ position:'relative', borderRadius:'20px', overflow:'hidden', border:`3px solid ${C.cyan}88`, boxShadow:`0 0 40px ${C.cyan}44` }}>
+        <canvas ref={canvasRef} width={W} height={H} />
+
+        {/* Start overlay */}
+        {!started && (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'16px' }}>
+            <div style={{ fontSize:'64px' }}>🏄</div>
+            <div className="fredoka" style={{ fontSize:'32px', color: C.yellow }}>Soda Surfer</div>
+            <div style={{ color:'rgba(255,255,255,0.7)', textAlign:'center', maxWidth:'320px', lineHeight:1.6, fontSize:'15px' }}>
+              Utilise <kbd style={{background:'#333', padding:'2px 8px', borderRadius:'4px'}}>↑</kbd> <kbd style={{background:'#333', padding:'2px 8px', borderRadius:'4px'}}>↓</kbd> ou les boutons ci-dessous.<br/>
+              Évite 🥤🍟🍬 — Collecte 🍎🥦💧
+            </div>
+            <BigBtn onClick={startGame} color={C.cyan} textColor="#000" style={{ fontSize:'22px', padding:'16px 40px' }}>C'EST PARTI ! 🚀</BigBtn>
+          </div>
+        )}
+
+        {/* Game over overlay */}
+        {gameOver && (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.85)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'16px' }}>
+            <div className="pop-in" style={{ textAlign:'center' }}>
+              <div style={{ fontSize:'64px' }}>💀</div>
+              <div className="fredoka" style={{ fontSize:'36px', color: C.coral }}>Game Over!</div>
+              <div className="fredoka" style={{ fontSize:'28px', color: C.yellow, marginTop:'8px' }}>Score: {score}</div>
+            </div>
+            <div style={{ display:'flex', gap:'12px', flexWrap:'wrap', justifyContent:'center' }}>
+              <BigBtn onClick={startGame} color={C.green} textColor="#000">Rejouer ↺</BigBtn>
+              <BigBtn onClick={() => { setGameOver(false); setStarted(false); }} color={C.yellow} textColor="#000">→ Quiz 🎯</BigBtn>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile controls */}
+      <div style={{ display:'flex', gap:'24px', marginTop:'16px' }}>
+        <BigBtn onClick={moveUp} color={C.cyan} textColor="#000" style={{ fontSize:'20px', padding:'14px 32px' }}>⬆ HAUT</BigBtn>
+        <BigBtn onClick={moveDown} color={C.cyan} textColor="#000" style={{ fontSize:'20px', padding:'14px 32px' }}>⬇ BAS</BigBtn>
+      </div>
+      <div style={{ color:'rgba(255,255,255,0.4)', fontSize:'12px', marginTop:'8px' }}>Aussi utilisable avec les touches ↑↓ du clavier</div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════
+   SCREEN 3: ASSIETTE ROYALE (Tower Defense)
+   ════════════════════════════════════════════════════ */
+const COLS = 9, ROWS = 5;
+const TICK_MS = 700;
+
+function initGrid() { return Array.from({length:ROWS}, () => Array(COLS).fill(null)); }
+
+function TDGame({ onGameOver, onBack }) {
+  const [grid, setGrid] = useState(initGrid());
+  const [enemies, setEnemies] = useState([]);
+  const [energy, setEnergy] = useState(150);
+  const [maxEnergy] = useState(200);
+  const [lives, setLives] = useState(20);
+  const [score, setScore] = useState(0);
+  const [wave, setWave] = useState(0);
+  const [phase, setPhase] = useState('prep'); // prep | wave | gameover | victory
+  const [selected, setSelected] = useState(null);
+  const [effects, setEffects] = useState([]); // {x,y,text,color,id}
+  const [unitTimers, setUnitTimers] = useState({}); // key -> ready
+  const [cellFlash, setCellFlash] = useState({}); // row-col -> color
+  const tickRef = useRef(null);
+  const effectId = useRef(0);
+
+  // Energy regen
+  useEffect(() => {
+    const t = setInterval(() => {
+      setEnergy(e => Math.min(maxEnergy, e + 8));
+    }, 1500);
+    return () => clearInterval(t);
+  }, []);
+
+  const addEffect = (row, col, text, color) => {
+    const id = effectId.current++;
+    setEffects(e => [...e, { row, col, text, color, id }]);
+    setTimeout(() => setEffects(e => e.filter(x => x.id !== id)), 900);
+  };
+
+  const flashCell = (row, col, color) => {
+    const key = `${row}-${col}`;
+    setCellFlash(f => ({ ...f, [key]: color }));
+    setTimeout(() => setCellFlash(f => { const n = {...f}; delete n[key]; return n; }), 400);
+  };
+
+  // Place unit
+  const placeUnit = (row, col) => {
+    if (!selected) return;
+    if (grid[row][col]) return;
+    const unit = TD_UNITS[selected];
+    if (energy < unit.cost) return;
+
+    const key = `${row}-${col}`;
+    const newGrid = grid.map(r => [...r]);
+    newGrid[row][col] = { type: selected, hp: unit.hp || 999, lastAtk: 0, born: Date.now(), ready: selected !== 'lentils' };
+    setGrid(newGrid);
+    setEnergy(e => e - unit.cost);
+    flashCell(row, col, unit.color);
+
+    // Delayed unit timer
+    if (selected === 'lentils') {
+      setTimeout(() => {
+        setUnitTimers(t => ({ ...t, [key]: true }));
+        setGrid(g => {
+          const ng = g.map(r => [...r]);
+          if (ng[row][col]) ng[row][col] = { ...ng[row][col], ready: true };
+          return ng;
+        });
+        addEffect(row, col, '💥 ACTIVÉ!', C.purple);
+      }, TD_UNITS.lentils.delayMs);
+    }
+  };
+
+  // Start wave
+  const startWave = () => {
+    if (wave >= WAVES.length) { setPhase('victory'); return; }
+    const waveEnemies = WAVES[wave].map((typeIdx, i) => ({
+      id: Date.now() + i,
+      row: Math.floor(Math.random() * ROWS),
+      col: COLS - 1,
+      ...TD_ENEMIES[typeIdx],
+      hp: TD_ENEMIES[typeIdx].maxHp,
+      delay: i * 1200,
+      active: false,
+    }));
+    // Stagger spawning
+    waveEnemies.forEach((e, i) => {
+      setTimeout(() => {
+        setEnemies(prev => [...prev, { ...e, active: true }]);
+      }, e.delay);
+    });
+    setPhase('wave');
+    setWave(w => w + 1);
+  };
+
+  // Game tick
+  useEffect(() => {
+    if (phase !== 'wave') return;
+    tickRef.current = setInterval(() => {
+      setGrid(currentGrid => {
+        setEnemies(currentEnemies => {
+          let livesLost = 0;
+          let scoreGained = 0;
+          const newEffects = [];
+
+          const updatedEnemies = currentEnemies
+            .filter(e => e.active)
+            .map(e => {
+              // Check if unit in same row can attack this enemy
+              let newHp = e.hp;
+              for (let c = 0; c < COLS; c++) {
+                const cell = currentGrid[e.row]?.[c];
+                if (!cell || !cell.ready) continue;
+                const unit = TD_UNITS[cell.type];
+                if (unit.type === 'barrier' || unit.type === 'support') continue;
+                const dist = Math.abs(c - e.col);
+                if (dist <= (unit.range || 1)) {
+                  newHp -= unit.damage || 0;
+                  flashCell(e.row, c, C.yellow);
+                }
+              }
+
+              if (newHp <= 0) {
+                scoreGained += e.reward;
+                newEffects.push({ row: e.row, col: e.col, text: `+${e.reward}⭐`, color: C.yellow });
+                return null;
+              }
+              return { ...e, hp: newHp };
+            })
+            .filter(Boolean)
+            .map(e => ({ ...e, col: e.col - 1 })); // advance
+
+          // Check if enemy reached left side
+          const reached = updatedEnemies.filter(e => e.col < 0);
+          livesLost = reached.length;
+
+          if (livesLost > 0) {
+            setLives(l => {
+              const newLives = l - livesLost;
+              if (newLives <= 0) {
+                setPhase('gameover');
+                onGameOver(0);
+              }
+              return Math.max(0, newLives);
+            });
+          }
+
+          if (scoreGained > 0) setScore(s => s + scoreGained);
+          newEffects.forEach(ef => addEffect(ef.row, ef.col, ef.text, ef.color));
+
+          const remaining = updatedEnemies.filter(e => e.col >= 0);
+          // Check wave completion
+          if (remaining.length === 0 && phase === 'wave') {
+            setTimeout(() => setPhase('prep'), 500);
+          }
+          return remaining;
+        });
+        return currentGrid;
+      });
+    }, TICK_MS);
+    return () => clearInterval(tickRef.current);
+  }, [phase]);
+
+  const cellSize = Math.min(56, Math.floor((window.innerWidth - 120) / COLS));
+
+  return (
+    <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', padding:'16px', position:'relative', zIndex:1, overflowX:'hidden' }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'12px', width:'100%', maxWidth:'700px', flexWrap:'wrap' }}>
+        <BigBtn onClick={onBack} color="rgba(255,255,255,0.1)" textColor="white" style={{ fontSize:'13px', padding:'7px 12px' }}>← Retour</BigBtn>
+        <div className="fredoka" style={{ fontSize:'22px', color: C.orange }}>🏰 Assiette Royale</div>
+        <div style={{ marginLeft:'auto', display:'flex', gap:'12px', flexWrap:'wrap' }}>
+          <ScoreBadge score={score} label="score" />
+          <ScoreBadge score={`❤️ ${lives}`} label="vies" />
+          <ScoreBadge score={`⚡ ${energy}`} label="énergie" />
+        </div>
+      </div>
+
+      {/* Wave indicator */}
+      <div style={{ display:'flex', gap:'8px', marginBottom:'12px' }}>
+        {WAVES.map((_, i) => (
+          <div key={i} style={{ width:'32px', height:'8px', borderRadius:'4px', background: i < wave ? C.green : i === wave ? C.yellow : 'rgba(255,255,255,0.15)' }} />
+        ))}
+        <div style={{ color:'rgba(255,255,255,0.5)', fontSize:'12px', marginLeft:'8px', alignSelf:'center' }}>VAGUES</div>
+      </div>
+
+      {/* GRID */}
+      <div style={{ position:'relative', background: C.panel, borderRadius:'16px', border:`2px solid ${C.orange}44`, padding:'8px', marginBottom:'12px' }}>
+        {/* Column headers */}
+        <div style={{ display:'flex', gap:'2px', marginBottom:'2px', paddingLeft:'6px' }}>
+          {Array.from({length:COLS}).map((_,c) => (
+            <div key={c} style={{ width:cellSize, textAlign:'center', fontSize:'9px', color:'rgba(255,255,255,0.2)', fontWeight:700 }}>
+              {c === 0 ? '🏠' : COLS - 1 - c}
+            </div>
+          ))}
+        </div>
+
+        {grid.map((row, r) => (
+          <div key={r} style={{ display:'flex', gap:'2px', marginBottom:'2px' }}>
+            {row.map((cell, c) => {
+              const flashColor = cellFlash[`${r}-${c}`];
+              const enemy = enemies.find(e => e.row === r && e.col === c && e.active);
+              const effect = effects.find(e => e.row === r && e.col === c);
+
+              return (
+                <div
+                  key={c}
+                  onClick={() => !cell && !enemy && placeUnit(r, c)}
+                  style={{
+                    width: cellSize, height: cellSize,
+                    borderRadius: '8px',
+                    background: flashColor ? flashColor + '88' : cell ? `${TD_UNITS[cell.type]?.color}22` : enemy ? '#FF4D6D11' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${flashColor || (cell ? TD_UNITS[cell.type]?.color + '66' : 'rgba(255,255,255,0.08)')}`,
+                    cursor: !cell && !enemy && selected ? 'pointer' : 'default',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    position:'relative',
+                    fontSize: `${cellSize * 0.5}px`,
+                    transition:'background 0.2s',
+                    flexShrink: 0,
+                  }}
+                >
+                  {cell && (
+                    <div style={{ textAlign:'center', lineHeight:1 }}>
+                      <div style={{ fontSize: `${cellSize*0.45}px` }}>{TD_UNITS[cell.type]?.emoji}</div>
+                      {!cell.ready && (
+                        <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.6)', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          <div className="flash" style={{ fontSize:'10px', color: C.purple }}>⏳</div>
+                        </div>
+                      )}
+                      {/* HP bar for barriers */}
+                      {TD_UNITS[cell.type]?.type === 'barrier' && (
+                        <div style={{ position:'absolute', bottom:'2px', left:'4px', right:'4px', height:'3px', background:'rgba(0,0,0,0.5)', borderRadius:'2px' }}>
+                          <div style={{ width:`${(cell.hp / (TD_UNITS[cell.type]?.hp||400))*100}%`, height:'100%', background: C.coral, borderRadius:'2px', transition:'width 0.3s' }} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {enemy && (
+                    <div style={{ textAlign:'center', position:'relative' }}>
+                      <div style={{ fontSize: `${cellSize*0.45}px`, animation:'enemyShake 0.3s infinite' }}>{enemy.emoji}</div>
+                      <div style={{ position:'absolute', bottom:'-6px', left:'2px', right:'2px', height:'3px', background:'rgba(0,0,0,0.5)', borderRadius:'2px' }}>
+                        <div style={{ width:`${(enemy.hp/enemy.maxHp)*100}%`, height:'100%', background:'#FF4D6D', borderRadius:'2px', transition:'width 0.3s' }} />
+                      </div>
+                    </div>
+                  )}
+                  {effect && (
+                    <div className="slide-in" style={{ position:'absolute', top:'-20px', left:'50%', transform:'translateX(-50%)', background:effect.color, color:'#000', borderRadius:'8px', padding:'2px 6px', fontSize:'11px', fontWeight:900, whiteSpace:'nowrap', zIndex:10, pointerEvents:'none' }}>
+                      {effect.text}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Unit shop */}
+      <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', justifyContent:'center', marginBottom:'12px' }}>
+        {Object.entries(TD_UNITS).map(([key, u]) => (
+          <div
+            key={key}
+            onClick={() => setSelected(selected === key ? null : key)}
+            style={{
+              background: selected === key ? `${u.color}44` : C.panel,
+              border: `2px solid ${selected === key ? u.color : u.color+'44'}`,
+              borderRadius:'12px',
+              padding:'8px 12px',
+              cursor: energy >= u.cost ? 'pointer' : 'not-allowed',
+              opacity: energy >= u.cost ? 1 : 0.4,
+              transform: selected === key ? 'translateY(-4px)' : 'none',
+              transition:'all 0.15s',
+              textAlign:'center',
+              minWidth:'70px',
+            }}
+          >
+            <div style={{ fontSize:'28px' }}>{u.emoji}</div>
+            <div style={{ fontSize:'10px', fontWeight:900, color:'white', lineHeight:1.2 }}>{u.name}</div>
+            <div style={{ background: u.color, color:'#000', borderRadius:'8px', padding:'1px 6px', fontSize:'11px', fontWeight:900, marginTop:'4px' }}>⚡{u.cost}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Controls */}
+      <div style={{ display:'flex', gap:'12px', flexWrap:'wrap', justifyContent:'center' }}>
+        {phase === 'prep' && wave < WAVES.length && (
+          <BigBtn onClick={startWave} color={C.orange} textColor="#000" style={{ fontSize:'18px' }} className="glow">
+            ⚔️ Vague {wave + 1} / {WAVES.length}
+          </BigBtn>
+        )}
+        {phase === 'prep' && wave >= WAVES.length && (
+          <BigBtn onClick={() => onGameOver(score)} color={C.green} textColor="#000" style={{ fontSize:'18px' }}>
+            🏆 Terminer → Quiz
+          </BigBtn>
+        )}
+        {phase === 'wave' && (
+          <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+            <div className="pulse" style={{ fontSize:'20px' }}>⚔️</div>
+            <div className="fredoka" style={{ color: C.coral, fontSize:'20px' }}>Vague en cours... {enemies.length} ennemis restants</div>
+          </div>
+        )}
+        {phase === 'gameover' && (
+          <div style={{ textAlign:'center' }}>
+            <div className="fredoka" style={{ fontSize:'28px', color: C.coral, marginBottom:'12px' }}>💀 Défaite! Score: {score}</div>
+            <div style={{ display:'flex', gap:'12px', justifyContent:'center' }}>
+              <BigBtn onClick={() => { setGrid(initGrid()); setEnemies([]); setEnergy(150); setLives(20); setScore(0); setWave(0); setPhase('prep'); }} color={C.green} textColor="#000">Rejouer ↺</BigBtn>
+              <BigBtn onClick={() => onGameOver(score)} color={C.yellow} textColor="#000">→ Quiz 🎯</BigBtn>
+            </div>
+          </div>
+        )}
+        {phase === 'victory' && <Confetti />}
+        {phase === 'victory' && (
+          <div style={{ textAlign:'center' }}>
+            <div className="pop-in fredoka" style={{ fontSize:'36px', color: C.yellow, marginBottom:'12px' }}>🏆 VICTOIRE ! Score: {score}</div>
+            <BigBtn onClick={() => onGameOver(score)} color={C.yellow} textColor="#000" style={{ fontSize:'20px' }}>→ Quiz 🎯</BigBtn>
+          </div>
+        )}
+      </div>
+
+      {/* Selected unit info */}
+      {selected && (
+        <div style={{ marginTop:'12px', background: `${TD_UNITS[selected].color}22`, border:`1px solid ${TD_UNITS[selected].color}66`, borderRadius:'12px', padding:'10px 16px', textAlign:'center', color:'white', fontSize:'14px' }}>
+          {TD_UNITS[selected].emoji} <strong>{TD_UNITS[selected].name}</strong> — {TD_UNITS[selected].desc}<br/>
+          <span style={{ color: TD_UNITS[selected].color }}>Clique sur une cellule vide pour placer !</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════
+   SCREEN 4: QUIZ
+   ════════════════════════════════════════════════════ */
+function QuizScreen({ gameType, gameScore, onDone }) {
+  const questions = QUIZZES[gameType];
+  const [current, setCurrent] = useState(0);
+  const [chosen, setChosen] = useState(null);
+  const [answers, setAnswers] = useState([]);
+  const [showXp, setShowXp] = useState(false);
+
+  const q = questions[current];
+  const isCorrect = chosen === q.correct;
+  const isAnswered = chosen !== null;
+
+  const next = () => {
+    const newAnswers = [...answers, { chosen, correct: q.correct }];
+    setAnswers(newAnswers);
+    if (current < questions.length - 1) {
+      setCurrent(c => c + 1);
+      setChosen(null);
+      setShowXp(false);
+    } else {
+      const correctCount = newAnswers.filter(a => a.chosen === a.correct).length;
+      onDone(correctCount, gameScore);
+    }
+  };
+
+  return (
+    <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px', position:'relative', zIndex:1 }}>
+      {/* Progress */}
+      <div style={{ display:'flex', gap:'8px', marginBottom:'32px' }}>
+        {questions.map((_, i) => (
+          <div key={i} style={{
+            width:'48px', height:'8px', borderRadius:'4px',
+            background: i < current ? C.green : i === current ? C.yellow : 'rgba(255,255,255,0.15)',
+            transition:'background 0.3s',
+          }}/>
+        ))}
+      </div>
+
+      <div className="slide-in" key={current} style={{ maxWidth:'560px', width:'100%', textAlign:'center' }}>
+        {/* Question number */}
+        <div style={{ background: C.panel, borderRadius:'12px', padding:'6px 16px', display:'inline-block', marginBottom:'20px' }}>
+          <span className="fredoka" style={{ color: C.yellow }}>❓ Question {current + 1} / {questions.length}</span>
+        </div>
+
+        {/* Question text */}
+        <div className="fredoka" style={{ fontSize:'clamp(18px,4vw,26px)', color:'white', marginBottom:'28px', lineHeight:1.4 }}>
+          {q.q}
+        </div>
+
+        {/* Options */}
+        <div style={{ display:'flex', flexDirection:'column', gap:'12px', marginBottom:'24px' }}>
+          {q.opts.map((opt, i) => {
+            let bg = C.panel;
+            let border = 'rgba(255,255,255,0.15)';
+            let textColor = 'white';
+            if (isAnswered) {
+              if (i === q.correct) { bg = `${C.green}33`; border = C.green; textColor = C.green; }
+              else if (i === chosen && !isCorrect) { bg = `${C.coral}33`; border = C.coral; textColor = C.coral; }
+            }
+            return (
+              <button
+                key={i}
+                onClick={() => { if (!isAnswered) { setChosen(i); setShowXp(true); } }}
+                disabled={isAnswered}
+                style={{
+                  background: bg, border: `2px solid ${border}`, borderRadius:'14px',
+                  padding:'14px 20px', fontSize:'16px', fontWeight:700,
+                  color: textColor, fontFamily:'Nunito, sans-serif',
+                  cursor: isAnswered ? 'default' : 'pointer',
+                  transform: isAnswered && i === q.correct ? 'scale(1.02)' : 'scale(1)',
+                  transition:'all 0.2s',
+                  textAlign:'left',
+                  display:'flex', alignItems:'center', gap:'12px',
+                }}
+              >
+                <span style={{ width:'28px', height:'28px', borderRadius:'50%', background:`${border}44`, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:'14px', flexShrink:0 }}>
+                  {['A','B','C'][i]}
+                </span>
+                {opt}
+                {isAnswered && i === q.correct && <span style={{ marginLeft:'auto' }}>✅</span>}
+                {isAnswered && i === chosen && !isCorrect && i !== q.correct && <span style={{ marginLeft:'auto' }}>❌</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Explanation */}
+        {showXp && (
+          <div className="pop-in" style={{
+            background: isCorrect ? `${C.green}22` : `${C.coral}22`,
+            border: `2px solid ${isCorrect ? C.green : C.coral}`,
+            borderRadius:'16px', padding:'16px 20px', marginBottom:'20px',
+          }}>
+            <div style={{ fontSize:'28px', marginBottom:'8px' }}>{isCorrect ? '🎉' : '🤔'}</div>
+            <div className="fredoka" style={{ fontSize:'18px', color: isCorrect ? C.green : C.coral, marginBottom:'8px' }}>
+              {isCorrect ? 'Parfait !' : 'Pas tout à fait...'}
+            </div>
+            <div style={{ color:'rgba(255,255,255,0.8)', fontSize:'14px', lineHeight:1.6 }}>{q.xp}</div>
+          </div>
+        )}
+
+        {isAnswered && (
+          <BigBtn onClick={next} color={C.yellow} textColor="#000" style={{ fontSize:'18px', padding:'14px 32px' }}>
+            {current < questions.length - 1 ? 'Question suivante →' : '🏆 Voir mes résultats !'}
+          </BigBtn>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════
+   SCREEN 5: RESULTS
+   ════════════════════════════════════════════════════ */
+function ResultsScreen({ quizScore, gameScore, totalQuestions, gameType, onPlayAgain, onMenu }) {
+  const pct = Math.round((quizScore / totalQuestions) * 100);
+  const emoji = pct === 100 ? '🏆' : pct >= 66 ? '🥇' : pct >= 33 ? '🥈' : '🥉';
+  const msg = pct === 100 ? 'Parfait ! Tu es un champion de la nutrition !' : pct >= 66 ? 'Excellent ! Tu as bien compris l\'essentiel !' : pct >= 33 ? 'Pas mal ! Rejoue pour progresser !' : 'Continue à jouer pour apprendre davantage !';
+
+  return (
+    <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px', position:'relative', zIndex:1 }}>
+      {pct >= 66 && <Confetti />}
+
+      <div className="pop-in" style={{ textAlign:'center', maxWidth:'500px' }}>
+        <div style={{ fontSize:'80px', marginBottom:'16px' }}>{emoji}</div>
+        <div className="fredoka" style={{ fontSize:'clamp(24px,5vw,42px)', color: C.yellow, marginBottom:'8px' }}>Résultats</div>
+
+        {/* Score cards */}
+        <div style={{ display:'flex', gap:'16px', justifyContent:'center', marginBottom:'24px', flexWrap:'wrap' }}>
+          <div style={{ background: C.panel, borderRadius:'16px', padding:'20px 28px', border:`2px solid ${C.yellow}44` }}>
+            <div className="fredoka" style={{ fontSize:'40px', color: C.yellow }}>{quizScore}/{totalQuestions}</div>
+            <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.6)', fontWeight:700 }}>BONNES RÉPONSES</div>
+          </div>
+          <div style={{ background: C.panel, borderRadius:'16px', padding:'20px 28px', border:`2px solid ${C.cyan}44` }}>
+            <div className="fredoka" style={{ fontSize:'40px', color: C.cyan }}>{gameScore}</div>
+            <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.6)', fontWeight:700 }}>SCORE JEU</div>
+          </div>
+          <div style={{ background: C.panel, borderRadius:'16px', padding:'20px 28px', border:`2px solid ${C.green}44` }}>
+            <div className="fredoka" style={{ fontSize:'40px', color: C.green }}>{pct}%</div>
+            <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.6)', fontWeight:700 }}>QUIZ</div>
+          </div>
+        </div>
+
+        <div style={{ background:`${C.green}22`, border:`2px solid ${C.green}66`, borderRadius:'16px', padding:'16px 24px', marginBottom:'28px', color:'white', fontSize:'16px', lineHeight:1.6 }}>
+          <span style={{ fontSize:'20px' }}>🧠</span> {msg}
+        </div>
+
+        {/* Key takeaway */}
+        <div style={{ background: C.panel, borderRadius:'16px', padding:'16px 24px', marginBottom:'28px', textAlign:'left' }}>
+          <div className="fredoka" style={{ color: C.yellow, marginBottom:'10px', fontSize:'16px' }}>💡 À retenir :</div>
+          {gameType === 'sodaSurfer' ? (
+            <div style={{ color:'rgba(255,255,255,0.8)', fontSize:'14px', lineHeight:1.8 }}>
+              ✅ Les sodas & junk foods = sucres rapides = énergie qui s'effondre vite<br/>
+              ✅ Fruits & légumes = énergie stable et durable<br/>
+              ✅ Équilibre = la clé pour durer et performer
+            </div>
+          ) : (
+            <div style={{ color:'rgba(255,255,255,0.8)', fontSize:'14px', lineHeight:1.8 }}>
+              ✅ Les junk foods envahissent notre alimentation sans qu'on le voie<br/>
+              ✅ Les légumineuses (lentilles) sont lentes mais ultra-puissantes !<br/>
+              ✅ Diversifier son alimentation = stratégie gagnante sur le long terme
+            </div>
+          )}
+        </div>
+
+        <div style={{ display:'flex', gap:'12px', flexWrap:'wrap', justifyContent:'center' }}>
+          <BigBtn onClick={onPlayAgain} color={C.cyan} textColor="#000" style={{ fontSize:'16px' }}>↺ Rejouer</BigBtn>
+          <BigBtn onClick={onMenu} color={C.yellow} textColor="#000" style={{ fontSize:'16px' }}>🏠 Menu</BigBtn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════
+   INFO MODAL (Teacher / Parent content)
+   ════════════════════════════════════════════════════ */
+function InfoModal({ onClose }) {
+  const HEURISTICS = [
+    { icon:'🎯', title:'Charge cognitive minimale', body:'Les enfants de 10–11 ans ont une mémoire de travail plus limitée que les adultes. Règle : max 3 infos nouvelles par session. Chaque jeu enseigne UN seul concept. (Nielsen Norman Group, 2018)' },
+    { icon:'🌈', title:'Couleurs saturées & chaudes', body:'Les interfaces de jeux pour 9–11 ans utilisent des couleurs vives (rouge, orange) à haute saturation. L\'aspect visuel est la première porte d\'entrée cognitive. (Lyu et al., Color Research & Application, 2022)' },
+    { icon:'⚡', title:'Feedback immédiat obligatoire', body:'L\'attention des enfants nécessite une réponse visuelle/sonore immédiate à chaque action. L\'attente tue l\'engagement. Nos jeux flashent chaque collision, gain, et action. (Frontiers, 2021)' },
+    { icon:'🏆', title:'Compétition & score = accroche', body:'La compétition sociale (même contre soi-même via le score) active le système de récompense dopaminergique. Score visible en permanence = engagement maintenu. (Blumberg, Social Policy Report, 2019)' },
+    { icon:'📖', title:'Stealth learning (apprentissage invisible)', body:'L\'enfant apprend sans savoir qu\'il apprend. Le "META" du jeu (la stratégie gagnante) EST la leçon. Les ennemis = junk foods. Les héros = vrais aliments. Aucune leçon frontale.' },
+    { icon:'⏳', title:'Gratification différée (10–11 ans)', body:'À 10–11 ans, le cerveau est prêt à comprendre la valeur de l\'attente (comme l\'unité Lentilles⏳). C\'est l\'âge idéal pour enseigner que "lent et stable" > "rapide et intense". (PNNS 4)' },
+    { icon:'🎮', title:'Narration contextuelle', body:'Une histoire cadre augmente significativement l\'engagement (37s vs 11s sur même task). Contexte = motivation intrinsèque. D\'où l\'univers arcade/aventure cohérent. (JMIR Serious Games, 2025)' },
+    { icon:'🧩', title:'Complexité progressive', body:'Trop simple = ennui. Trop complexe = abandon. Les vagues du tower defense augmentent en difficulté pour maintenir le "flow". Chaque vague = une nouvelle info nutritionnelle incarnée.' },
+  ];
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', background:'rgba(0,0,0,0.85)', backdropFilter:'blur(8px)' }} onClick={onClose}>
+      <div style={{ background:'#12002a', borderRadius:'24px', border:`2px solid ${C.purple}66`, maxWidth:'700px', width:'100%', maxHeight:'90vh', overflow:'auto', padding:'32px' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px' }}>
+          <div className="fredoka" style={{ fontSize:'24px', color: C.yellow }}>📋 Dossier Enseignants</div>
+          <BigBtn onClick={onClose} color="rgba(255,255,255,0.1)" textColor="white" style={{ fontSize:'14px', padding:'8px 14px' }}>✕ Fermer</BigBtn>
+        </div>
+
+        <div style={{ background:`${C.green}22`, border:`1px solid ${C.green}66`, borderRadius:'12px', padding:'14px 18px', marginBottom:'24px', color:'white', fontSize:'14px', lineHeight:1.7 }}>
+          <strong style={{ color: C.green }}>Objectif :</strong> Enseigner les principes d'une alimentation équilibrée aux CM2 (10–11 ans) via le jeu. Les deux mini-jeux incarnent les leçons du programme PNNS 4 sans jamais "faire cours".
+        </div>
+
+        <div className="fredoka" style={{ color: C.cyan, marginBottom:'16px', fontSize:'18px' }}>🔬 Heuristiques UX/Cognitives Appliquées</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:'12px', marginBottom:'28px' }}>
+          {HEURISTICS.map((h,i) => (
+            <div key={i} style={{ background:'rgba(255,255,255,0.04)', borderRadius:'12px', padding:'14px 16px', borderLeft:`4px solid ${C.yellow}` }}>
+              <div style={{ display:'flex', gap:'10px', alignItems:'flex-start' }}>
+                <span style={{ fontSize:'22px', flexShrink:0 }}>{h.icon}</span>
+                <div>
+                  <div style={{ fontWeight:800, color:'white', fontSize:'14px', marginBottom:'4px' }}>{h.title}</div>
+                  <div style={{ color:'rgba(255,255,255,0.65)', fontSize:'13px', lineHeight:1.6 }}>{h.body}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="fredoka" style={{ color: C.orange, marginBottom:'14px', fontSize:'18px' }}>🎮 Correspondance Jeux → Leçons</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'28px' }}>
+          <div style={{ background:'rgba(76,201,240,0.1)', border:`1px solid ${C.cyan}44`, borderRadius:'12px', padding:'14px' }}>
+            <div className="fredoka" style={{ color: C.cyan, marginBottom:'8px' }}>🏄 Soda Surfer</div>
+            <div style={{ color:'rgba(255,255,255,0.7)', fontSize:'13px', lineHeight:1.6 }}>
+              Ennemis : sodas, frites, bonbons, burger<br/>
+              Collectibles : fruits, légumes, eau<br/>
+              Leçon : sucres rapides = obstacles, alimentation saine = carburant
+            </div>
+          </div>
+          <div style={{ background:'rgba(255,154,0,0.1)', border:`1px solid ${C.orange}44`, borderRadius:'12px', padding:'14px' }}>
+            <div className="fredoka" style={{ color: C.orange, marginBottom:'8px' }}>🏰 Assiette Royale</div>
+            <div style={{ color:'rgba(255,255,255,0.7)', fontSize:'13px', lineHeight:1.6 }}>
+              Unité Lentilles⏳ = gratification différée<br/>
+              Diversité d'unités = équilibre alimentaire<br/>
+              Leçon : une seule défense ne suffit pas → varier = gagner
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background:`${C.purple}22`, border:`1px solid ${C.purple}44`, borderRadius:'12px', padding:'14px 18px', color:'rgba(255,255,255,0.7)', fontSize:'13px', lineHeight:1.7 }}>
+          <strong style={{ color: C.purple }}>Sources :</strong> Nielsen Norman Group (2018) · Lyu et al., Color Research (2022) · Blumberg, Social Policy Report (2019) · Frontiers in Computer Science (2021) · JMIR Serious Games (2025) · PNNS 4 (2019–2023) · EFSA Dietary Reference Values (2010)
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════
+   ROOT APP
+   ════════════════════════════════════════════════════ */
+export default function NutriQuestApp() {
+  const [screen, setScreen] = useState('landing');
+  const [currentGame, setCurrentGame] = useState(null);
+  const [gameScore, setGameScore] = useState(0);
+  const [scores, setScores] = useState({ sodaSurfer: 0, tdGame: 0 });
+  const [showInfo, setShowInfo] = useState(false);
+  const [quizData, setQuizData] = useState({ score: 0, correct: 0 });
+
+  const handleGameOver = (type, score) => {
+    setCurrentGame(type);
+    setGameScore(score);
+    setScores(prev => ({ ...prev, [type]: Math.max(prev[type], score) }));
+    setScreen('quiz');
+  };
+
+  const handleQuizDone = (correctCount, gs) => {
+    setQuizData({ score: gs, correct: correctCount });
+    setScreen('results');
+  };
+
+  return (
+    <div className="nq-root" style={{ minHeight:'100vh', background: C.bg, color:'white', overflowX:'hidden' }}>
+      <StyleInject />
+      <Stars />
+
+      {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
+
+      {screen === 'landing' && (
+        <LandingScreen
+          scores={scores}
+          onStart={{
+            sodaSurfer: () => setScreen('sodaSurfer'),
+            tdGame: () => setScreen('tdGame'),
+            info: () => setShowInfo(true),
+          }}
+        />
+      )}
+
+      {screen === 'sodaSurfer' && (
+        <SodaSurferGame
+          onGameOver={(score) => handleGameOver('sodaSurfer', score)}
+          onBack={() => setScreen('landing')}
+        />
+      )}
+
+      {screen === 'tdGame' && (
+        <TDGame
+          onGameOver={(score) => handleGameOver('tdGame', score)}
+          onBack={() => setScreen('landing')}
+        />
+      )}
+
+      {screen === 'quiz' && (
+        <QuizScreen
+          gameType={currentGame}
+          gameScore={gameScore}
+          onDone={handleQuizDone}
+        />
+      )}
+
+      {screen === 'results' && (
+        <ResultsScreen
+          quizScore={quizData.correct}
+          gameScore={quizData.score}
+          totalQuestions={3}
+          gameType={currentGame}
+          onPlayAgain={() => setScreen(currentGame)}
+          onMenu={() => setScreen('landing')}
+        />
+      )}
+    </div>
+  );
+}

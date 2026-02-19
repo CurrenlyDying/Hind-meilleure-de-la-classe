@@ -1,0 +1,117 @@
+C'est une excellente démarche. Pour concevoir une intervention de santé publique efficace, l'équipe projet doit maîtriser le sujet bien au-delà de ce qui sera enseigné aux enfants. Cela vous permet de répondre aux questions pièges, d'adapter le discours et d'éviter les approximations scientifiques.
+
+Voici un **Dossier de Référence et de Cadrage** pour votre équipe. Il est structuré comme un document technique de santé publique, intégrant les données physiologiques, nutritionnelles et pédagogiques nécessaires.
+
+---
+
+# DOSSIER DE RÉFÉRENCE : ÉDUCATION NUTRITIONNELLE EN MILIEU SCOLAIRE (CYCLE 3 / CM2)
+
+**Thème :** Sensibilisation à l'équilibre alimentaire et prévention des comportements à risque (sucres/gras cachés).
+**Public Cible :** Enfants de 10-11 ans (CM2).
+**Objectif du document :** Fournir le socle théorique et scientifique à l'équipe d'intervention.
+
+---
+
+## I. JUSTIFICATION DE SANTÉ PUBLIQUE
+
+### 1.1. Contexte épidémiologique (France)
+Selon les études récentes (type ESTEBAN / ANSES), la prévalence du surpoids et de l'obésité chez les enfants se stabilise mais reste préoccupante (environ 17% des 6-17 ans). On note une consommation excessive de glucides simples (sucres ajoutés) et une carence en fibres et micronutriments.
+
+### 1.2. La fenêtre d'opportunité du CM2 (10-11 ans)
+*   **Physiologie :** Période de pré-puberté. Les besoins énergétiques augmentent, tout comme le stockage des graisses en prévision de la poussée de croissance.
+*   **Psychologie :** Début de l'autonomie alimentaire (argent de poche, choix du goûter, cantine). L'enfant est capable de raisonnement abstrait mais reste très influençable par le marketing et le groupe de pairs.
+*   **Risque :** C'est l'âge où se cristallisent les mauvaises habitudes (grignotage, sédentarité).
+
+---
+
+## II. SOCLE SCIENTIFIQUE : LES CONNAISSANCES CLÉS POUR L'INTERVENANT
+
+*Cette section détaille ce que l'équipe doit savoir pour vulgariser correctement.*
+
+### 2.1. La Gestion de l'Énergie : Glucides et Index Glycémique
+L'ancienne distinction "sucres lents / sucres rapides" est obsolète scientifiquement, mais reste utile pédagogiquement si elle est bien expliquée.
+
+*   **Le concept scientifique (pour vous) :** C'est l'Index Glycémique (IG).
+    *   *IG Élevé (ex: bonbons, pain blanc, soda) :* Provoque un pic de glucose brutal dans le sang $\rightarrow$ forte sécrétion d'insuline $\rightarrow$ stockage immédiat sous forme de graisse $\rightarrow$ hypoglycémie réactionnelle (coup de fatigue et fringale 2h après).
+    *   *IG Bas/Moyen (ex: pain complet, légumineuses, pomme) :* Diffusion lente de l'énergie. Maintient la concentration et la satiété.
+*   **La transposition pédagogique (pour l'enfant) :**
+    *   L'image du feu : Le sucre rapide est un **feu de paille** (grande flamme qui s'éteint vite). Le féculent complet est une **bûche** (brûle doucement et chauffe longtemps).
+
+### 2.2. Les Lipides : Le "Gras" n'est pas l'ennemi
+Il est crucial de ne pas diaboliser le gras, indispensable au cerveau (constitué majoritairement de lipides) et aux hormones.
+
+*   **Acides Gras Saturés (À limiter) :** Charcuteries, viennoiseries, fritures. Ils rigidifient les artères à long terme.
+*   **Acides Gras Insaturés (À privilégier) :** Huiles végétales (olive, colza), noix, poissons gras. Ils sont le "lubrifiant" du corps et protègent le système cardiovasculaire.
+*   **Message clé :** "Le gras donne du goût et fabrique ton cerveau, mais il faut choisir le bon gras (l'avocat, les noix) plutôt que le gras caché des gâteaux industriels."
+
+### 2.3. L'Hydratation et les "Calories Liquides"
+C'est souvent le point aveugle de l'alimentation des enfants.
+*   **Le piège :** Le cerveau ne comptabilise pas les calories liquides comme les solides. Boire 500ml de soda (environ 50g de sucre = 10 morceaux) n'apporte aucune satiété.
+*   **L'eau :** Seule boisson physiologiquement indispensable. Elle permet les réactions chimiques, la thermorégulation et l'élimination des déchets.
+
+---
+
+## III. DÉFINITION APPROFONDIE DES OBJECTIFS OPÉRATIONNELS
+
+Voici les objectifs reformulés pour guider la construction de vos ateliers.
+
+### Axe 1 : Savoirs (Cognitif) - "Comprendre la machine"
+*   **Objectif :** L'enfant doit pouvoir expliquer pourquoi le corps a besoin de diversité.
+*   **Contenu :** Classification des aliments en 3 rôles (Bâtisseurs, Énergétiques, Protecteurs).
+*   **Indicateur de réussite :** L'enfant sait classer un aliment inconnu dans la bonne famille.
+
+### Axe 2 : Savoir-faire (Technique) - "Déjouer les pièges"
+*   **Objectif :** Développer l'esprit critique face à un produit industriel (Lecture d'étiquette simplifiée).
+*   **Contenu :** Repérer l'ordre des ingrédients (le premier est le plus abondant). Repérer la ligne "dont sucres".
+*   **Indicateur de réussite :** Face à deux paquets de céréales, l'enfant identifie celui qui contient le moins de sucre.
+
+### Axe 3 : Savoir-être (Comportemental) - "L'écoute de soi"
+*   **Objectif :** Distinguer la faim physiologique de l'envie émotionnelle.
+*   **Contenu :** Sensibilisation aux signaux du corps (ventre qui gargouille vs envie de goût sucré).
+*   **Indicateur de réussite :** L'enfant est capable de verbaliser : "Je n'ai plus faim, je m'arrête" ou "Je mange ça pour le plaisir, pas pour me nourrir".
+
+---
+
+## IV. STRATÉGIE PÉDAGOGIQUE ET ACTIVITÉS PROPOSÉES
+
+Pour des CM2, l'approche frontale (cours magistral) est inefficace. Il faut privilégier l'approche ludique et **socio-constructiviste** (ils construisent le savoir ensemble).
+
+### 4.1. Analogie Mécanique : "Ton corps est un véhicule"
+*Cette métaphore (présente dans vos notes) est très puissante à cet âge.*
+*   **La Carrosserie & le Moteur (Protéines) :** Pour construire la voiture et réparer les pièces (grandir, faire du muscle).
+*   **Le Carburant (Glucides/Lipides) :**
+    *   *Super-Carburant :* Pâtes, riz, pain (pour rouler longtemps).
+    *   *Nitro/Boost :* Sucre rapide (pour un sprint, mais abîme le moteur si on en met tout le temps).
+*   **L'Huile moteur (Eau & Vitamines) :** Pour que ça ne surchauffe pas et que les pièces ne rouillent pas.
+
+### 4.2. Atelier "Enquêteurs du Sucre"
+*   **Matériel :** Boîtes de sucre en morceaux (calibrés à 5g), bouteilles vides de sodas, jus, eaux aromatisées, paquets de gâteaux.
+*   **Action :** Les élèves calculent le nombre de morceaux de sucre (Lecture étiquette : Glucides $\div$ 5 = nombre de morceaux) et construisent une "tour de sucre" devant le produit.
+*   **Choc visuel :** Une canette de soda = 7 morceaux de sucre. Un petit jus de fruit "bio" industriel = souvent 5 ou 6 morceaux.
+
+### 4.3. La Création de l'Assiette Idéale
+Utiliser la règle visuelle plutôt que les grammes.
+*   **50% Végétal :** Légumes et fruits (vitamines, fibres, volume dans l'estomac).
+*   **25% Féculents :** Carburant durable.
+*   **25% Protéines :** Construction.
+*   **+ Eau à volonté.**
+
+---
+
+## V. POINTS DE VIGILANCE ÉTHIQUES (IMPORTANT)
+
+En tant que professionnels de santé publique, vous devez veiller à ne pas créer d'effets pervers.
+
+1.  **Ne pas stigmatiser :** Ne jamais pointer du doigt le goûter d'un élève ou son poids. Parler de "santé pour tous" et d'énergie, pas de "régime" ou de "maigrir".
+2.  **Attention à la précarité :** Certains enfants mangent mal car leurs parents n'ont pas les moyens d'acheter des produits frais.
+    *   *Solution :* Valoriser les aliments accessibles (œufs, lentilles, légumes surgelés bruts, eau du robinet) et ne pas insister uniquement sur le "Bio" ou les produits chers.
+3.  **Éviter l'orthorexie (Obsession du manger sain) :**
+    *   Il faut enseigner la notion de **fréquence**. "Les frites et les bonbons, ce n'est pas interdit. C'est comme la fête : c'est génial, mais si c'est tous les jours, ce n'est plus la fête et on est fatigué."
+
+---
+
+## VI. RESSOURCES POUR ALLER PLUS LOIN (BIBLIOGRAPHIE)
+
+*   **PNNS 4 (Programme National Nutrition Santé) :** Recommandations officielles françaises 2019-2023.
+*   **Mangerbouger.fr :** Outils pédagogiques validés par Santé Publique France.
+*   **La Fabrique à Menus :** Outil pour générer des menus équilibrés (utile pour montrer aux enfants).
